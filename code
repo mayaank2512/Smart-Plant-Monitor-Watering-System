@@ -1,0 +1,121 @@
+#include <WiFi.h>
+// If using MQTT
+#include <PubSubClient.h>
+// If using DHT
+#include <DHT.h>
+
+// ---- Configuration ----
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+
+// If using MQTT
+const char* mqtt_server = "MQTT_BROKER_ADDRESS";
+const int mqtt_port = 1883;
+const char* mqtt_topic_moisture = "plant/moisture";
+const char* mqtt_topic_status = "plant/status";
+
+// Pins
+const int pinMoisture = 34;      // analog pin for soil moisture
+const int pinPumpRelay = 26;     // digital pin to drive relay
+const int pumpOnValue = LOW;     // depends on relay module (LOW or HIGH)
+const int pumpOffValue = HIGH;
+
+// (Optional) DHT configuration
+#define DHTTYPE DHT22
+const int pinDHT = 27;
+DHT dht(pinDHT, DHTTYPE);
+
+// Threshold
+const int moistureThreshold = 40;  // percent. adjust via calibration
+
+// Timings
+unsigned long lastSendTime = 0;
+const unsigned long sendInterval = 60000;  // send data every 1 minute
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+void setup() {
+  Serial.begin(115200);
+  
+  // pins setup
+  pinMode(pinPumpRelay, OUTPUT);
+  digitalWrite(pinPumpRelay, pumpOffValue); // ensure pump off
+  
+  dht.begin();
+
+  // connect WiFi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("WiFi connected");
+
+  // MQTT setup
+  client.setServer(mqtt_server, mqtt_port);
+}
+
+void loop() {
+  if (!client.connected()) {
+    reconnectMQTT();
+  }
+  client.loop();
+
+  // Read sensors
+  int rawMoisture = analogRead(pinMoisture);
+  // Map to percent (you will need calibration values)
+  int moisturePercent = map(rawMoisture, 0, 4095, 100, 0);  
+  // So 0 = very wet, 100 = very dry (or vice versa depending on sensor)
+
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  Serial.print("Moisture: "); Serial.print(moisturePercent);
+  Serial.print(" %, Temp: "); Serial.print(temperature);
+  Serial.print("°C, Humidity: "); Serial.println(humidity);
+
+  // Control pump
+  if (moisturePercent > moistureThreshold) {
+    // too dry
+    digitalWrite(pinPumpRelay, pumpOnValue);
+  } else {
+    digitalWrite(pinPumpRelay, pumpOffValue);
+  }
+
+  // Send data over MQTT
+  if (millis() - lastSendTime > sendInterval) {
+    lastSendTime = millis();
+    sendSensorData(moisturePercent, temperature, humidity);
+  }
+  
+  delay(2000);  // delay between readings
+}
+
+void reconnectMQTT() {
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    if (client.connect("ESP32PlantMonitor")) {
+      Serial.println("connected");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      delay(5000);
+    }
+  }
+}
+
+void sendSensorData(int moisture, float temp, float hum) {
+  // Create JSON
+  String payload = "{";
+  payload += "\"moisture\":";
+  payload += moisture;
+  payload += ",\"temperature\":";
+  payload += temperature;
+  payload += ",\"humidity\":";
+  payload += humidity;
+  payload += "}";
+
+  client.publish(mqtt_topic_moisture, payload.c_str());
+}
