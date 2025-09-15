@@ -1,0 +1,19 @@
+smart-plant-monitor/
+├── hardware/
+│   ├── wiring-diagram.png
+│   ├── enclosure‑design/
+│   └── photos/
+├── firmware/
+│   ├── src/
+│   │   └── main.ino   ← firmware code
+│   └── libs/          ← any external helper libs
+├── backend/
+│   ├── server/        ← if you build your own API
+│   ├── dashboard/     ← frontend UI
+│   └── README.md
+├── docs/
+│   ├── calibration.md
+│   ├── setup.md
+│   └── troubleshooting.md
+├── LICENSE
+└── README.md
