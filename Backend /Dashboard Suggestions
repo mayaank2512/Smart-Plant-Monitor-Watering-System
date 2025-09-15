@@ -1,0 +1,12 @@
+You can choose a backend approach depending on what you’re comfortable with. Some options:
+Option	Pros	Cons
+Firebase Realtime Database / Firestore	Quick setup, has SDKs / hosting, easy to use	Cost may rise, less control
+AWS IoT Core + DynamoDB / S3 + Lambda	Scalable, production‑grade	More setup, can be more complex
+Your own REST API + DB (Node.js, Python Flask/Django, etc.)	Full control, cheap, flexible	You need to host, maintain
+MQTT broker + dashboard (Node‑RED / ThingsBoard / Grafana)	Good for real‑time dashboards, lots of community stuff	Slight learning curve
+Dashboard could show:
+Current moisture / temperature / humidity
+Historical graph (over hours/days)
+Status of pump (on/off)
+Manual controls (turn pump on/off, set threshold)
+Alerts / notifications
